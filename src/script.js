@@ -39,6 +39,52 @@ scene.add( axesHelper );
 
 
 /**
+ * physics
+ */
+const world = new CANNON.World()
+world.broadphase = new CANNON.SAPBroadphase(world)
+world.gravity.set(0, - 9.82, 0)
+
+
+const defaultMaterial = new CANNON.Material('default')
+const defaultContactMaterial = new CANNON.ContactMaterial(
+    defaultMaterial,
+    defaultMaterial,
+    {
+        friction: 1,
+        restitution: 0.2
+    }
+)
+world.addContactMaterial(defaultContactMaterial)
+
+
+//ship CannonBody
+const shipShape = new CANNON.Box(new CANNON.Vec3(1.5, 1, 2))
+const shipBody = new CANNON.Body({
+    mass: 100,
+    position: new CANNON.Vec3(0, 10, 0),
+    shape: shipShape,
+    material: defaultMaterial
+})
+world.addBody(shipBody)
+
+
+//floor CannonBody
+const floorShape = new CANNON.Plane()
+const floorBody = new CANNON.Body()
+floorBody.position = new CANNON.Vec3(0,0,0)
+floorBody.mass =0
+floorBody.material = defaultMaterial
+floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(- 1, 0, 0), Math.PI * 0.5) 
+floorBody.addShape(floorShape)
+world.addBody(floorBody)
+
+
+
+
+
+
+/**
  * Models
  */
 const dracoLoader = new DRACOLoader()
@@ -62,20 +108,6 @@ let mixer = null
 /**
  * Island
  */
-const testIslandGeometry = new THREE.SphereGeometry(5,5)
-const testIslandMaterial= new THREE.MeshStandardMaterial({
-    color: '#545351',
-    metalness: 0,
-    roughness: 0.5,
-    side: THREE.DoubleSide,
-   
-    
-})
-
-const testIslandMesh = new THREE.Mesh(testIslandGeometry,testIslandMaterial)
-scene.add(testIslandMesh)
-testIslandMesh.position.set(10,0,-20)
-
 
 /**
  * Ship
@@ -332,11 +364,12 @@ gltfLoader.load(
             // renderer.render(scene, camera)
         })
 
+        
+
 
 
     }
 )
-
 
 
 /**
@@ -345,100 +378,11 @@ gltfLoader.load(
  
 
 /**
- * Key Control
- * 
- */
-let currentShipPositionX = shipGroup.position.x
-let currentShipPositionY = shipGroup.position.y
-let currentShipPositionZ = shipGroup.position.z
-let currentShipRotationY = shipGroup.rotation.y
-let newShipRotationY
-
-let startSail = false
-let SailDirection
-
-const TurnLeft = () =>{
-    SailDirection = 'left'
-    newShipRotationY = currentShipRotationY - Math.PI/100
-    gsap.to(shipGroup.rotation,{duration:1, delay:0, y:newShipRotationY})
-    gsap.to(camera.rotation,{duration:1, delay:0, x:newShipRotationY})
-    gsap.to(shipGroup.rotation,{duration:0.5, delay:0, z:Math.PI*0.05}).then(()=>{
-        gsap.to(shipGroup.rotation,{duration:2, delay:0, z:0})
-    }) 
-    currentShipRotationY = newShipRotationY
-    
-}
-
-
-const TurnRight = () =>{
-    SailDirection = 'Right'
-    newShipRotationY = currentShipRotationY + Math.PI/100
-    gsap.to(shipGroup.rotation,{duration:1, delay:0, y:newShipRotationY})
-    gsap.to(camera.rotation,{duration:1, delay:0, y:newShipRotationY})
-    gsap.to(shipGroup.rotation,{duration:0.5, delay:0, z:-Math.PI*0.05}).then(()=>{
-        gsap.to(shipGroup.rotation,{duration:2, delay:0, z:0})
-    })
-    currentShipRotationY = newShipRotationY
-    
-}
-
- window.addEventListener('keydown', function(event) {
-
-    switch (event.key) {
-        case 'w':
-            startSail = true
-           
-            break
-        case 'a':
-          TurnLeft()
-            
-            break
-        case 's':
-            startSail = false
-          
-            break
-        case 'd':
-            TurnRight()
-            break     
-    }
-
-  
-
-});
-
-/**
- * Ship Foward Control
- */
- let speed
-const Sail = () =>{
-    if(startSail === true){
-        //get Direction to move
-        const direction = new THREE.Vector3()
-        shipGroup.getWorldDirection(direction)
-        // shipGroup.position.add(direction.multiplyScalar(0.01))
-
-        // console.log("dire", direction.multiplyScalar(0.01))
-        speed = 0.03
-        let newShipPositionX = currentShipPositionX + direction.x*speed
-        let newShipPositionY = currentShipPositionY + direction.y*speed
-        let newShipPositionZ = currentShipPositionZ + direction.z*speed
-        gsap.to(shipGroup.position,{x: newShipPositionX, y: newShipPositionY, z: newShipPositionZ, duration:2, delay:0.05})
-        gsap.to(camera.position,{x: currentShipPositionX,  z: currentShipPositionZ, duration:0, delay:0})
-        // // gsap.to(camera.position,{duration:1, delay:0, z:newShipPositionZ})
-        
-        currentShipPositionX = newShipPositionX
-        currentShipPositionY = newShipPositionY
-        currentShipPositionZ = newShipPositionZ
-
-          
-       
-    }
-}
-
-
-/**
  * Water
  */
+
+
+
 // Geometry
 const waterGeometry = new THREE.PlaneGeometry(200, 200, 1024, 1024)
 
@@ -450,6 +394,7 @@ debugObject.surfaceColor = '#96cfe1'
 const waterMaterial = new THREE.ShaderMaterial({
     vertexShader: waterVertexShader,
     fragmentShader: waterFragmentShader,
+   depthTest: true,
     uniforms:
     {
         uTime:{ value:0},
@@ -495,7 +440,7 @@ gui.add(waterMaterial.uniforms.uColorMultiplier,'value').min(0).max(10).step(0.0
 
 // Mesh
 const water = new THREE.Mesh(waterGeometry, waterMaterial)
-water.rotation.x =  Math.PI * 0.5
+water.rotation.x =  -Math.PI * 0.5
 scene.add(water)
 
 
@@ -520,7 +465,7 @@ directionalLight.shadow.camera.left = - 7
 directionalLight.shadow.camera.top = 7
 directionalLight.shadow.camera.right = 7
 directionalLight.shadow.camera.bottom = - 7
-directionalLight.position.set(5, -30, 5)
+directionalLight.position.set(5, 10, 5)
 scene.add(directionalLight)
 
 /**
@@ -550,30 +495,152 @@ window.addEventListener('resize', () =>
 /**
  * Camera
  */
-// Base camera
-// const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-// camera.position.set(- 8, 4, 8)
-// scene.add(camera)
+//Base camera
+const camera = new THREE.PerspectiveCamera(70, sizes.width / sizes.height, 0.1, 1000)
+camera.rotation.y = -Math.PI * 0.5
+      
+camera.position.x = shipGroup.position.x +10
+camera.position.z = shipGroup.position.z -10
+camera.position.y = 15
+camera.lookAt(shipGroup.position);
+scene.add(camera)
 
 // OrthographicCamera
-debugObject.cameraHeight =15
+// debugObject.cameraHeight =15
 
-const camera = new THREE.OrthographicCamera( sizes.width / 100,  sizes.width / -100, sizes.height / 100, sizes.height / -100, 1, 2000 );
-camera.lookAt(shipGroup.position)
-camera.position.set(10, debugObject.cameraHeight,10)
-gui.add(debugObject,'cameraHeight').min(0).max(100).step(0.001).name('cameraY')
-
-
+// const camera = new THREE.OrthographicCamera( sizes.width / 100,  sizes.width / -100, sizes.height / 100, sizes.height / -100, 1, 2000 );
+// camera.lookAt(shipGroup.position)
+// camera.position.set(10, debugObject.cameraHeight,10)
+// gui.add(debugObject,'cameraHeight').min(0).max(100).step(0.001).name('cameraY')
 
 
-// camera.lookAt(ship.hull.position)
-scene.add( camera )
+
+const change_cam_orientation = () => {
+    if(change_cam_angle){
+        camera.position.x = 10;
+        camera.position.y = 60;
+        camera.position.z = -10;
+        camera.lookAt(shipGroup.position);
+    } else {
+        camera.rotation.y = -Math.PI * 0.5
+      
+        camera.position.x = shipGroup.position.x +10
+        camera.position.z = shipBody.position.z -10
+        camera.position.y = 15
+        camera.lookAt(shipGroup.position);
+    }
+}
+
 
 
 // Controls
 const controls = new OrbitControls(camera, canvas)
 controls.target.set(shipGroup.position.x, shipGroup.position.y, shipGroup.position.z)
 controls.enableDamping = true
+
+debugObject.speed =0.04
+
+gui.add(debugObject,'speed').min(0).max(1).step(0.01).name('shipSpeed')
+
+let currentShipPositionX = shipGroup.position.x
+let currentShipPositionY = shipGroup.position.y
+let currentShipPositionZ = shipGroup.position.z
+
+
+
+let yAxis = new THREE.Vector3(0,1,0)
+let rotation
+let currentRotation
+function moveShip(){
+    if(left){
+       
+        rotation = new THREE.Quaternion().setFromAxisAngle(yAxis, Math.PI/120)
+        currentRotation = shipBody.quaternion
+        currentRotation.mult(rotation, currentRotation)  
+        shipGroup.quaternion.copy(shipBody.quaternion)
+       
+
+
+    } else if (right){ 
+       
+        rotation = new THREE.Quaternion().setFromAxisAngle(yAxis, -Math.PI/120)
+        currentRotation = shipBody.quaternion
+        
+        currentRotation.mult(rotation, currentRotation)
+        shipGroup.quaternion.copy(shipBody.quaternion)
+       
+        
+
+
+    } else if (forward){
+        
+       
+        const direction = new THREE.Vector3()
+        shipGroup.getWorldDirection(direction)
+       
+        let newShipPositionX = currentShipPositionX + direction.x*debugObject.speed
+        let newShipPositionY = currentShipPositionY + direction.y*debugObject.speed
+        let newShipPositionZ = currentShipPositionZ + direction.z*debugObject.speed
+        // shipBody.position.x = newShipPositionX
+        // shipBody.position.y = newShipPositionY
+        // shipBody.position.z = newShipPositionZ
+        gsap.to(shipBody.position,{x: newShipPositionX, y: newShipPositionY, z: newShipPositionZ, duration:2, delay:0.05})
+    
+        
+        currentShipPositionX = newShipPositionX
+        currentShipPositionY = newShipPositionY
+        currentShipPositionZ = newShipPositionZ
+     
+        shipGroup.position.copy(shipBody.position)
+        
+
+    } else if (forward === 0){
+       
+
+
+    }
+
+}
+
+
+
+
+/**
+ * Key Control
+ * 
+ */
+let forward
+let stop
+let left
+let right
+let change_cam_angle
+
+
+document.addEventListener('keydown',function(event){
+    console.log(event.keyCode)
+    let code = event.keyCode
+    if (code==87) forward = 1 //w
+    if (code==83) forward = 0 //s
+    if (code==65) left = 1 //a
+    if (code==68) right = 1 //d
+    if (code==27) change_cam_angle =1 //esc
+    
+})
+
+
+document.addEventListener('keyup',function(event){
+    console.log(event.keyCode)
+    let code = event.keyCode
+    if (code==87) forward = 1 //w
+    if (code==83) forward = 0 //s
+    if (code==65) left = 0 //a
+    if (code==68) right = 0 //d
+    if (code==27) change_cam_angle = 0 //esc
+    
+})
+
+
+
 
 /**
  * Renderer
@@ -586,11 +653,19 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
+
+
+
+
+
+
 /**
  * Animate
  */
 const clock = new THREE.Clock()
 let previousTime = 0
+
+
 
 
 
@@ -604,15 +679,21 @@ const tick = () =>
 
      //Update water
      waterMaterial.uniforms.uTime.value = elapsedTime
+   
+   
+     // Update physics
+     world.step(1 / 60, deltaTime, 3)
+     
 
     //Sail Control
-    Sail()
-    shipGroup.position.y = Math.cos(elapsedTime)*0.2
-    shipGroup.rotation.x = Math.sin(elapsedTime)*0.1
+    moveShip()
+  
+  
 
+
+ 
     // console.log(shipGroup.position)
    
-  
 
    
 
@@ -625,9 +706,7 @@ const tick = () =>
     controls.update()
 
     //update Camera
-    camera.position.set(shipGroup.position.x+10,  debugObject.cameraHeight,shipGroup.position.z+10)
-
-    camera.lookAt(shipGroup.position)
+    change_cam_orientation()
     
     // Render
     renderer.render(scene, camera)
